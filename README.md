@@ -36,6 +36,8 @@
 
 [Penpot video](https://github.com/user-attachments/assets/7c67fd7c-04d3-4c9b-88ec-b6f5e23f8332)
 
+This fork is maintained at `git@github.com:bkcode/penpot.git`. The local deployment uses the root `compose.yaml`, including the resident MCP worker and backend DNS repair. See [Local deployment](LOCAL-DEPLOYMENT.md).
+
 Penpot is the open-source design platform for teams that build digital products at scale.
 
 Penpot’s key strength lies in giving you **full ownership of your design infrastructure**. Built on open source and designed for [self-hosting](https://help.penpot.app/technical-guide/getting-started/), it puts teams in complete control of their design environment supporting strict compliance and governance requirements. Whether used in the **browser or deployed on your own servers**, Penpot **works with open standards** like SVG, CSS, HTML, and JSON. 

@@ -1,0 +1,255 @@
+# Penpot local deployment: application, resident MCP worker and backend DNS.
+name: penpot
+networks:
+  penpot: null
+  penpot-dns:
+    ipam:
+      config:
+      - subnet: ${PENPOT_DNS_SUBNET:-172.30.250.0/24}
+secrets:
+  worker-credentials:
+    file: ./.worker-credentials.json
+services:
+  penpot-admin-console:
+    cpus: 1
+    depends_on:
+      penpot-postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      PENPOT_DATABASE_PASSWORD: ${PENPOT_DATABASE_PASSWORD:?Set PENPOT_DATABASE_PASSWORD in .env}
+      PENPOT_DATABASE_URI: postgresql://penpot-postgres/penpot
+      PENPOT_DATABASE_USERNAME: penpot
+      PENPOT_INTERNAL_URI: http://penpot-frontend:8080
+      PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:-http://localhost:9001}
+      PENPOT_SECRET_KEY: ${PENPOT_SECRET_KEY:?Set PENPOT_SECRET_KEY in .env}
+    image: penpotapp/admin-console:${PENPOT_VERSION:-2.18.5}
+    mem_limit: 512m
+    networks:
+      penpot: null
+    restart: always
+  penpot-backend:
+    cpus: 2
+    depends_on:
+      penpot-dns:
+        condition: service_started
+        required: true
+      penpot-postgres:
+        condition: service_healthy
+        required: true
+      penpot-valkey:
+        condition: service_healthy
+        required: true
+    dns:
+    - ${PENPOT_DNS_ADDRESS:-172.30.250.53}
+    environment:
+    - PENPOT_ADMIN_CONSOLE_URI=http://penpot-admin-console:3000
+    - PENPOT_DATABASE_PASSWORD=${PENPOT_DATABASE_PASSWORD:?Set PENPOT_DATABASE_PASSWORD in .env}
+    - PENPOT_DATABASE_URI=postgresql://penpot-postgres/penpot
+    - PENPOT_DATABASE_USERNAME=penpot
+    - PENPOT_FLAGS=disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies enable-mcp
+      enable-admin-console
+    - PENPOT_HTTP_SERVER_MAX_BODY_SIZE=367001600
+    - PENPOT_HTTP_SERVER_MAX_MULTIPART_BODY_SIZE=367001600
+    - PENPOT_OBJECTS_STORAGE_BACKEND=fs
+    - PENPOT_OBJECTS_STORAGE_FS_DIRECTORY=/opt/data/assets
+    - PENPOT_PUBLIC_URI=${PENPOT_PUBLIC_URI:-http://localhost:9001}
+    - PENPOT_REDIS_URI=redis://penpot-valkey/0
+    - PENPOT_SECRET_KEY=${PENPOT_SECRET_KEY:?Set PENPOT_SECRET_KEY in .env}
+    - PENPOT_SMTP_DEFAULT_FROM=no-reply@example.com
+    - PENPOT_SMTP_DEFAULT_REPLY_TO=no-reply@example.com
+    - PENPOT_SMTP_HOST=penpot-mailpit
+    - PENPOT_SMTP_PASSWORD
+    - PENPOT_SMTP_PORT=1025
+    - PENPOT_SMTP_SSL=false
+    - PENPOT_SMTP_TLS=false
+    - PENPOT_SMTP_USERNAME
+    - PENPOT_TELEMETRY_ENABLED=false
+    - PENPOT_TELEMETRY_REFERER=compose
+    - JVM_OPTS=-Xms256m -Xmx1536m -XX:MaxDirectMemorySize=256m
+    image: penpotapp/backend:${PENPOT_VERSION:-2.18.5}
+    mem_limit: 3g
+    networks:
+      penpot: null
+      penpot-dns: null
+    restart: always
+    volumes:
+    - source: penpot_assets
+      target: /opt/data/assets
+      type: volume
+      volume: {}
+  penpot-dns:
+    cap_add:
+    - NET_BIND_SERVICE
+    cap_drop:
+    - ALL
+    command:
+    - --listen=0.0.0.0
+    - --port=53
+    - --upstream=https://1.1.1.1/dns-query
+    - --upstream=https://1.0.0.1/dns-query
+    - --cache
+    - --cache-max-ttl=300
+    - --timeout=8s
+    cpus: 0.5
+    image: adguard/dnsproxy:v0.86.0@sha256:4d65bafbf246b206a1af35d4263a86c35451d957458c7836304199f1cd2c1535
+    mem_limit: 128m
+    networks:
+      penpot-dns:
+        ipv4_address: ${PENPOT_DNS_ADDRESS:-172.30.250.53}
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+  penpot-exporter:
+    cpus: 2
+    depends_on:
+      penpot-valkey:
+        condition: service_healthy
+        required: true
+    environment:
+    - PENPOT_FLAGS=disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies enable-mcp
+      enable-admin-console
+    - PENPOT_INTERNAL_URI=http://penpot-frontend:8080
+    - PENPOT_PUBLIC_URI=${PENPOT_PUBLIC_URI:-http://localhost:9001}
+    - PENPOT_REDIS_URI=redis://penpot-valkey/0
+    - PENPOT_SECRET_KEY=${PENPOT_SECRET_KEY:?Set PENPOT_SECRET_KEY in .env}
+    - PENPOT_BROWSER_POOL_MAX=1
+    - PENPOT_BROWSER_POOL_MIN=0
+    image: penpotapp/exporter:${PENPOT_VERSION:-2.18.5}
+    mem_limit: 1536m
+    networks:
+      penpot: null
+    restart: always
+  penpot-frontend:
+    cpus: 1
+    depends_on:
+      penpot-admin-console:
+        condition: service_started
+        required: true
+      penpot-backend:
+        condition: service_started
+        required: true
+      penpot-exporter:
+        condition: service_started
+        required: true
+      penpot-mcp:
+        condition: service_started
+        required: true
+    environment:
+      PENPOT_ADMIN_CONSOLE_URI: http://penpot-admin-console:3000
+      PENPOT_FLAGS: disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies enable-mcp
+        enable-admin-console
+      PENPOT_HTTP_SERVER_MAX_BODY_SIZE: 367001600
+      PENPOT_HTTP_SERVER_MAX_MULTIPART_BODY_SIZE: 367001600
+      PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:-http://localhost:9001}
+    image: penpotapp/frontend:${PENPOT_VERSION:-2.18.5}
+    mem_limit: 256m
+    networks:
+      penpot: null
+    ports:
+    - ${PENPOT_BIND_ADDRESS:-127.0.0.1}:9001:8080
+    restart: always
+    volumes:
+    - source: penpot_assets
+      target: /opt/data/assets
+      type: volume
+      volume: {}
+  penpot-mailpit:
+    cpus: 0.5
+    expose:
+    - '1025'
+    image: axllent/mailpit:v1
+    mem_limit: 128m
+    networks:
+      penpot: null
+    ports:
+    - host_ip: 127.0.0.1
+      mode: ingress
+      protocol: tcp
+      published: '8025'
+      target: 8025
+    restart: always
+  penpot-mcp:
+    cpus: 1
+    image: penpotapp/mcp:${PENPOT_VERSION:-2.18.5}
+    mem_limit: 512m
+    networks:
+      penpot: null
+    restart: always
+  penpot-postgres:
+    cpus: 1
+    environment:
+    - POSTGRES_INITDB_ARGS=--data-checksums
+    - POSTGRES_DB=penpot
+    - POSTGRES_USER=penpot
+    - POSTGRES_PASSWORD=${PENPOT_DATABASE_PASSWORD:?Set PENPOT_DATABASE_PASSWORD in .env}
+    healthcheck:
+      interval: 2s
+      retries: 5
+      start_period: 2s
+      test:
+      - CMD-SHELL
+      - pg_isready -U penpot
+      timeout: 10s
+    image: postgres:15
+    mem_limit: 768m
+    networks:
+      penpot: null
+    restart: always
+    stop_signal: SIGINT
+    volumes:
+    - source: penpot_postgres_v15
+      target: /var/lib/postgresql/data
+      type: volume
+      volume: {}
+  penpot-valkey:
+    cpus: 0.5
+    environment:
+    - VALKEY_EXTRA_FLAGS=--maxmemory 128mb --maxmemory-policy volatile-lfu
+    healthcheck:
+      interval: 1s
+      retries: 5
+      start_period: 3s
+      test:
+      - CMD-SHELL
+      - valkey-cli ping | grep PONG
+      timeout: 3s
+    image: valkey/valkey:8.1
+    mem_limit: 192m
+    networks:
+      penpot: null
+    restart: always
+  penpot-worker:
+    build:
+      args:
+        PENPOT_VERSION: ${PENPOT_VERSION:-2.18.5}
+      context: ./mcp/resident-worker
+    cpus: 2
+    depends_on:
+      penpot-frontend:
+        condition: service_started
+        required: true
+    environment:
+      PENPOT_WORKER_BASE_URL: http://penpot-frontend:8080
+      PENPOT_WORKER_CREDENTIALS_FILE: /run/secrets/worker-credentials
+      PENPOT_WORKER_FAILURE_THRESHOLD: ${PENPOT_WORKER_FAILURE_THRESHOLD:-3}
+      PENPOT_WORKER_FILE_ID: ${PENPOT_WORKER_FILE_ID:?Set target file ID}
+      PENPOT_WORKER_PAGE_ID: ${PENPOT_WORKER_PAGE_ID:?Set target page ID}
+      PENPOT_WORKER_RECOVERY_GRACE_MS: ${PENPOT_WORKER_RECOVERY_GRACE_MS:-150000}
+      PENPOT_WORKER_TASK_BUDGET_MS: ${PENPOT_WORKER_TASK_BUDGET_MS:-150000}
+      PENPOT_WORKER_TEAM_ID: ${PENPOT_WORKER_TEAM_ID:?Set target team ID}
+    image: penpot-resident-worker:local
+    init: true
+    mem_limit: 2g
+    networks:
+      penpot: null
+    restart: unless-stopped
+    secrets:
+    - source: worker-credentials
+      target: /run/secrets/worker-credentials
+    shm_size: 256m
+    stop_grace_period: 20s
+volumes:
+  penpot_assets: null
+  penpot_postgres_v15: null

@@ -2,23 +2,19 @@
 
 A Fake-IP proxy can make public image domains resolve to `198.18.0.0/15`. Penpot correctly rejects that reserved range before downloading the image. Plain DNS requests to public resolvers may also be intercepted.
 
-The optional `compose.dns.yaml` overlay supplies the backend with real DNS answers using AdGuard's version-pinned DNS-over-HTTPS proxy. No backend patch, host allowlist, SSRF bypass, or permanent image-IP mapping is used. The existing download validation and redirect checks remain in force.
+The root [`compose.yaml`](../../compose.yaml) supplies the backend with real DNS answers using AdGuard's version-pinned DNS-over-HTTPS proxy. The existing download validation and redirect checks remain in force.
 
 ## Deployment
 
-Merge this overlay with the existing Penpot deployment. It adds a private Docker network and one DNS service. No DNS port is published on the host. Only `penpot-backend` uses this resolver; Docker still resolves Penpot service names through its embedded resolver.
+DNS is part of the single root deployment. It uses a private Docker network and one DNS service. No DNS port is published on the host. Only `penpot-backend` uses this resolver; Docker still resolves Penpot service names through its embedded resolver.
 
 ```bash
-docker compose -p penpot \
-  -f /path/to/deployment/compose.yaml \
-  -f /path/to/deployment/compose.override.yaml \
-  -f /path/to/penpot/mcp/resident-worker/compose.dns.yaml \
-  up -d
+docker compose up -d
 ```
 
-The default subnet is `172.30.250.0/24`, with the resolver at `172.30.250.53`. Check for conflicts with Docker networks, LANs, and VPN routes before enabling. Set `PENPOT_DNS_SUBNET` and `PENPOT_DNS_ADDRESS` together if these overlap another network. The worker overlay can be merged alongside this file.
+The default subnet is `172.30.250.0/24`, with the resolver at `172.30.250.53`. Check for conflicts with Docker networks, LANs, and VPN routes before deploying. Set `PENPOT_DNS_SUBNET` and `PENPOT_DNS_ADDRESS` together if these overlap another network.
 
-Upstreams are `https://1.1.1.1/dns-query` and `https://1.0.0.1/dns-query`. Literal IPs avoid a DNS bootstrap dependency, TLS certificates are verified, and port 443 avoids ordinary UDP DNS interception. DNS cache TTL is capped at 300 seconds. The upstreams receive the backend's public DNS queries. Do not enable this overlay in an environment that requires an organizational resolver; configure the proxy's HTTPS upstream accordingly instead.
+Upstreams are `https://1.1.1.1/dns-query` and `https://1.0.0.1/dns-query`. Literal IPs avoid a DNS bootstrap dependency, TLS certificates are verified, and port 443 avoids ordinary UDP DNS interception. DNS cache TTL is capped at 300 seconds. The upstreams receive the backend's public DNS queries. If an environment requires an organizational resolver, configure the proxy's HTTPS upstream accordingly.
 
 ## Verification
 
@@ -29,7 +25,7 @@ Upstreams are `https://1.1.1.1/dns-query` and `https://1.0.0.1/dns-query`. Liter
 5. Upload a local PNG through `upload-file-media-object`, read `/assets/by-file-media-id/{id}`, and compare its bytes with the source. This is the multipart endpoint used by `penpot.uploadMediaData`.
 6. If the image endpoint redirects, Penpot continues validating every redirect target.
 
-Changing DNS requires recreating the backend container and clears its old JVM DNS cache. Do this between editing tasks; do not discard data volumes. To roll back, remove the DNS overlay from the merged configuration and recreate the backend. Existing media and files are unchanged.
+Changing DNS requires recreating the backend container and clears its old JVM DNS cache. Do this between editing tasks; do not discard data volumes.
 
 ## Error URI
 

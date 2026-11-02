@@ -6,36 +6,9 @@ This module is maintained in `git@github.com:bkcode/penpot.git`. It can run alon
 
 ## Run
 
-1. Create a separate Penpot account for the worker. Complete onboarding, enable MCP, and generate its MCP key.
-2. Give that account editor access to the target team/file. Use a separate account from your desktop session so another tab cannot take its connection.
-3. Store this JSON outside the repository and restrict its permissions:
+Use the single [`compose.yaml`](../../compose.yaml) at the repository root. Setup, account permissions, credentials and startup commands are documented in [Local deployment](../../LOCAL-DEPLOYMENT.md).
 
-   ```json
-   { "email": "worker@example.test", "password": "YOUR_PASSWORD", "mcpKey": "YOUR_MCP_KEY" }
-   ```
-
-4. Add these values to the deployment environment. The page ID is the initial page; normal MCP operations can switch pages within the same file.
-
-   ```dotenv
-   PENPOT_VERSION=2.18.5
-   PENPOT_WORKER_BUILD_CONTEXT=/absolute/path/to/penpot/mcp/resident-worker
-   PENPOT_WORKER_CREDENTIALS_FILE=/absolute/path/outside/repo/worker-credentials.json
-   PENPOT_WORKER_TEAM_ID=YOUR_TEAM_UUID
-   PENPOT_WORKER_FILE_ID=YOUR_FILE_UUID
-   PENPOT_WORKER_PAGE_ID=YOUR_INITIAL_PAGE_UUID
-   ```
-
-5. Merge `compose.yaml` from this directory with the existing deployment. All relative paths in Compose resolve from its first file, so the build context and credential path above must be absolute:
-
-   ```bash
-   docker compose -p penpot \
-     -f /path/to/deployment/compose.yaml \
-     -f /path/to/deployment/compose.override.yaml \
-     -f /path/to/penpot/mcp/resident-worker/compose.yaml \
-     up -d --build penpot-worker
-   ```
-
-6. Configure your MCP client with the **worker account's** MCP key and the existing `/mcp/stream?userToken=...` endpoint. Your personal account's key remains separate.
+The worker has a dedicated account, editor access to one team/file, and its own MCP key. Its credentials are mounted read-only from the ignored root `.worker-credentials.json`. The page ID is the initial page; normal MCP operations can switch pages within the same file.
 
 The worker exposes no host port. It connects to `http://penpot-frontend:8080` on the private Compose network. It uses a fresh browser context after each recovery and does not read desktop browser profiles, cookies or passwords.
 
@@ -84,6 +57,6 @@ Runtime and tests require Node 24+. Unit tests cover configuration validation, s
 
 One worker owns one file. It does not expose a file-switch API, accept arbitrary URLs, or run a multi-file queue. To use another file, update its target IDs and recreate the worker. Ordinary page changes within the target file are allowed.
 
-## Optional image download DNS repair
+## Image download DNS repair
 
-If the host proxy returns Fake-IP DNS answers in `198.18.0.0/15`, Penpot rejects remote image downloads. The optional [DNS overlay](DNS.md) gives only the backend a private DNS-over-HTTPS resolver while retaining all SSRF checks. It is independent of worker recovery and needs a backend recreation when enabled.
+If the host proxy returns Fake-IP DNS answers in `198.18.0.0/15`, Penpot rejects remote image downloads. The root Compose deployment gives only the backend a private DNS-over-HTTPS resolver while retaining all SSRF checks. See [DNS repair](DNS.md). It is independent of worker recovery and needs a backend recreation when enabled.

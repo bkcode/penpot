@@ -126,3 +126,13 @@ opencode.json
 /scripts/__pycache__/
 /tools/__pycache__
 /scripts/__pycache__
+
+# Local deployment state and credentials
+/.local-credentials.json
+/.worker-credentials.json
+/.mcp-credentials.json
+/.worker-mcp-credentials.json
+/backups/
+/verification/
+/*.log
+!LOCAL-DEPLOYMENT.md
