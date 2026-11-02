@@ -15,6 +15,10 @@ workflows.
 [![Penpot MCP video playlist](https://github.com/user-attachments/assets/204f1d99-ce51-41dd-a5dd-1ef739f8f089)](https://www.youtube.com/playlist?list=PLgcCPfOv5v57SKMuw1NmS0-lkAXevpn10)
 
 
+## Resident execution
+
+For MCP access without a desktop browser tab, see [the resident worker](resident-worker/README.md). It runs the existing editor and plugin in a supervised headless browser, using a dedicated account and a fixed target file.
+
 ## Architecture
 
 The **Penpot MCP Server** exposes tools to AI clients (LLMs), which

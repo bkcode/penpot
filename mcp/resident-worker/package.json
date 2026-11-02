@@ -1,0 +1,22 @@
+{
+  "name": "@penpot/mcp-resident-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "tsc",
+    "types:check": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "fmt": "prettier --write src/",
+    "fmt:check": "prettier --check src/"
+  },
+  "dependencies": { "playwright": "1.62.1" },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3"
+  }
+}
