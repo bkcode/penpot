@@ -19,6 +19,7 @@ export class ResidentSession implements WorkerSession {
     private browser: Browser | null = null;
     private context: BrowserContext | null = null;
     private page: Page | null = null;
+    private pageCrashed = false;
     private readonly activity = new PluginActivity();
 
     constructor(config: WorkerConfig) {
@@ -38,7 +39,10 @@ export class ResidentSession implements WorkerSession {
                 `--unsafely-treat-insecure-origin-as-secure=${this.config.baseUrl}`,
             ],
         });
-        this.context = await this.browser.newContext({ locale: "en-US", viewport: { width: 1440, height: 900 } });
+        this.context = await this.browser.newContext({
+            locale: "en-US",
+            viewport: { width: 1440, height: 900 },
+        });
         // Use the same origin for the editor and bundled plugin inside the private worker network.
         await this.context.route("**/js/config.js*", async (route) => {
             const response = await route.fetch();
@@ -62,13 +66,20 @@ export class ResidentSession implements WorkerSession {
             });
         });
         const login = await this.context.request.post(`${this.config.baseUrl}/api/main/methods/login-with-password`, {
-            data: { email: this.config.credentials.email, password: this.config.credentials.password },
+            data: {
+                email: this.config.credentials.email,
+                password: this.config.credentials.password,
+            },
             timeout: this.config.startupTimeoutMs,
         });
         if (!login.ok()) {
             throw new Error("Worker authentication failed");
         }
         this.page = await this.context.newPage();
+        this.pageCrashed = false;
+        this.page.on("crash", () => {
+            this.pageCrashed = true;
+        });
         this.page.on("websocket", (socket) => {
             const url = new URL(socket.url());
             if (url.host !== new URL(this.config.baseUrl).host || url.pathname !== "/mcp/ws") {
@@ -80,7 +91,9 @@ export class ResidentSession implements WorkerSession {
             socket.on("close", () => this.activity.close(generation));
         });
         this.page.setDefaultTimeout(this.config.startupTimeoutMs);
-        await this.page.goto(this.config.workspaceUrl, { waitUntil: "domcontentloaded" });
+        await this.page.goto(this.config.workspaceUrl, {
+            waitUntil: "domcontentloaded",
+        });
         await this.page.getByRole("button", { name: "MCP", exact: true }).waitFor({ state: "visible" });
         // Enabled accounts auto-connect; explicitly reconnect if initialization needs recovery.
         const deadline = Date.now() + this.config.startupTimeoutMs;
@@ -90,7 +103,9 @@ export class ResidentSession implements WorkerSession {
                 return;
             } catch {
                 await this.page.getByRole("button", { name: "MCP", exact: true }).click();
-                const connect = this.page.getByRole("menuitem", { name: /^(Connect|Reconnect)$/i });
+                const connect = this.page.getByRole("menuitem", {
+                    name: /^(Connect|Reconnect)$/i,
+                });
                 if (await connect.count()) {
                     await connect.click();
                 } else {
@@ -103,9 +118,7 @@ export class ResidentSession implements WorkerSession {
     }
 
     async check(): Promise<SessionCheck> {
-        if (!this.browser?.isConnected() || !this.page || this.page.isClosed()) {
-            throw new SessionHealthError("browser_unavailable");
-        }
+        this.ensureBrowserAvailable();
         const activity = this.activity.snapshot();
         if (!activity.connected) {
             throw new SessionHealthError("plugin_disconnected");
@@ -120,11 +133,19 @@ export class ResidentSession implements WorkerSession {
     private async verifyTarget(): Promise<void> {
         try {
             const actual = await this.probe.readFile();
+            this.ensureBrowserAvailable();
             if (actual.fileId !== this.config.fileId) {
                 throw new SessionHealthError("target_mismatch");
             }
         } catch (error) {
+            this.ensureBrowserAvailable();
             throw new SessionHealthError(SessionHealthError.reasonOf(error));
+        }
+    }
+
+    private ensureBrowserAvailable(): void {
+        if (this.pageCrashed || !this.browser?.isConnected() || !this.page || this.page.isClosed()) {
+            throw new SessionHealthError("browser_unavailable");
         }
     }
 

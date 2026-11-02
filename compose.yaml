@@ -241,7 +241,7 @@ services:
       PENPOT_WORKER_TEAM_ID: ${PENPOT_WORKER_TEAM_ID:?Set target team ID}
     image: penpot-resident-worker:local
     init: true
-    mem_limit: 2g
+    mem_limit: 4g
     networks:
       penpot: null
     restart: unless-stopped

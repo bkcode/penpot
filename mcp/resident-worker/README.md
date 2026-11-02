@@ -10,7 +10,7 @@ Use the single [`compose.yaml`](../../compose.yaml) at the repository root. Setu
 
 The worker has a dedicated account, editor access to one team/file, and its own MCP key. Its credentials are mounted read-only from the ignored root `.worker-credentials.json`. The page ID is the initial page; normal MCP operations can switch pages within the same file.
 
-The worker exposes no host port. It connects to `http://penpot-frontend:8080` on the private Compose network. It uses a fresh browser context after each recovery and does not read desktop browser profiles, cookies or passwords.
+The root deployment caps worker memory at 4 GiB; this is a limit, not a reservation. The worker exposes no host port. It connects to `http://penpot-frontend:8080` on the private Compose network. It uses a fresh browser context after each recovery and does not read desktop browser profiles, cookies or passwords.
 
 ## Health and recovery
 
@@ -18,7 +18,7 @@ The worker exposes no host port. It connects to `http://penpot-frontend:8080` on
 - `GET /readyz`: returns 200 for a verified target or a connected plugin executing a task (`ready` / `busy`). Returns 503 during startup, probe degradation or recovery. A failed probe does not itself close the browser.
 - The worker observes MCP WebSocket task requests, responses and plugin heartbeats. While a business task is active, it skips the competing execution probe for up to 150 seconds (the default 120-second MCP deadline plus 30 seconds). Health probes do not count as business tasks.
 - An isolated probe failure changes readiness to `degraded` and retains the browser, file and pending tasks. Recovery requires both 3 consecutive failures and 150 seconds since the first failure. A successful read or a connected busy task clears the failure streak.
-- Confirmed browser/process/page loss recovers immediately on the next check. Plugin disconnects get the grace period so normal WebSocket reconnection can repair the connection without discarding the editor.
+- Confirmed browser/process/page loss, including a renderer `crash` event while Chromium stays connected, recovers on the next check without the probe grace period. A crash during a pending probe is also classified as browser loss once the probe settles. Plugin disconnects get the grace period so normal WebSocket reconnection can repair the connection without discarding the editor.
 - A task that never answers is not protected forever: after its task budget, active probes resume; sustained failures can then trigger recovery. The grace period starts at the first failed probe, so this path can take longer than 150 seconds.
 - `PENPOT_WORKER_FAILURE_THRESHOLD`, `PENPOT_WORKER_RECOVERY_GRACE_MS`, and `PENPOT_WORKER_TASK_BUDGET_MS` configure these budgets. The latter two must be at least 120 seconds; align them with the MCP task deadline when changing its default.
 - Defaults: 15-second read checks, 5-second recovery delay, 90-second startup budget. `PENPOT_WORKER_CHECK_INTERVAL_MS`, `PENPOT_WORKER_RETRY_INTERVAL_MS` and `PENPOT_WORKER_STARTUP_TIMEOUT_MS` override these values.

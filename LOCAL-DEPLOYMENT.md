@@ -42,7 +42,7 @@ Codex 使用后台账号的 MCP Key，连接地址格式为 `http://localhost:90
 
 ## MCP 常驻
 
-当前后台固定打开文件“Penpot MCP 验证”，文件内可以切换页面。日常 Chrome 可关闭，worker 在独立容器中运行编辑器和 MCP 插件。
+当前后台固定打开文件“Penpot MCP 验证”，文件内可以切换页面。日常 Chrome 可关闭，worker 在独立容器中运行编辑器和 MCP 插件，容器内存上限为 4 GiB（按需使用，并非预分配）。
 
 健康检查：
 
@@ -50,7 +50,7 @@ Codex 使用后台账号的 MCP Key，连接地址格式为 `http://localhost:90
 docker compose exec penpot-worker node -e "fetch('http://127.0.0.1:4404/readyz').then(async r=>console.log(r.status,await r.text()))"
 ```
 
-`ready` 表示可调用，`busy` 表示正在执行任务。运行中的任务会暂停竞争性探针；一次探针失败会保留会话，持续失败才恢复浏览器。恢复预算及源码说明见 [worker README](mcp/resident-worker/README.md)。MCP 的默认 120 秒调用期限仍有效。
+`ready` 表示可调用，`busy` 表示正在执行任务。运行中的任务会暂停竞争性探针；一次探针失败会保留会话，持续失败才恢复浏览器。确认页面崩溃时会跳过宽限期，在下一次检查时恢复；若探针正在等待响应，则在探针结束后识别崩溃。恢复预算及源码说明见 [worker README](mcp/resident-worker/README.md)。MCP 的默认 120 秒调用期限仍有效。
 
 ## 图片
 
