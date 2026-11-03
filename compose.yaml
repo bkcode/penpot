@@ -7,6 +7,8 @@ networks:
       config:
       - subnet: ${PENPOT_DNS_SUBNET:-172.30.250.0/24}
 secrets:
+  login-defaults:
+    file: ${PENPOT_LOGIN_DEFAULTS_FILE:-./frontend/selfhost/login-defaults.example.json}
   worker-credentials:
     file: ./.worker-credentials.json
 services:
@@ -154,6 +156,9 @@ services:
     ports:
     - ${PENPOT_BIND_ADDRESS:-127.0.0.1}:9001:8080
     restart: always
+    secrets:
+    - source: login-defaults
+      target: /run/secrets/login-defaults
     volumes:
     - source: penpot_assets
       target: /opt/data/assets

@@ -136,3 +136,5 @@ opencode.json
 /verification/
 /*.log
 !LOCAL-DEPLOYMENT.md
+
+/.login-defaults.json

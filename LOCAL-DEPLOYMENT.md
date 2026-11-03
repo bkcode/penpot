@@ -77,3 +77,11 @@ Penpot AI Kit 仍安装在用户目录 `~/.penpot-ai-kit`；它是共享技能�
 导入支持公开 HTTPS `.penpot` 链接，最大 200 MiB，默认导入目标团队的 Drafts；也可指定该团队内的项目。任务异步执行并持久化状态，同一 `requestId` 重试不会重复导入。导入成功不会切换后台编辑器或自动把文件连接为素材库。新任务卷为 `penpot_penpot_import_jobs`，容器内存上限为 1 GiB。
 
 配置、调用参数、重启后的任务行为及验收方法见 [导入 MCP README](mcp/file-import/README.md)。Codex 中新增连接名为 `penpot_import`，重新加载 MCP 或重启客户端后发现工具。
+
+## 登录表单默认值
+
+登录页可通过 `.env` 的 `PENPOT_LOGIN_DEFAULTS_FILE` 选择默认账号配置。当前指向 Git 忽略的 `.login-defaults.json`（权限 600），只包含 `email` 与 `password`，通过只读 secret 挂载到前端；实际值不进入源码或镜像。未配置时使用空值示例，不自动填写。
+
+此功能仅在 `#/auth/login` 页面预填空字段，不自动提交；密码仍为掩码，用户可以修改或清空。已有的其他账号和用户输入不会被覆盖，注册、找回密码等页面不填写。更新配置后刷新登录页即可；变更 secret 路径需重新创建前端容器。
+
+按当前部署的用途，默认账号和密码会发送给访问登录页的浏览器；`/js/selfhost-login.json` 使用 `Cache-Control: no-store`。它是登录便利配置，不是浏览器端保密存储。
