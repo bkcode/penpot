@@ -1,0 +1,5 @@
+/* Hide the two dashboard subscription cards in this self-hosted deployment. */
+.main_ui_dashboard_subscription__nitrate-banner,
+.main_ui_dashboard_subscription__nitrate-current-plan {
+  display: none !important;
+}

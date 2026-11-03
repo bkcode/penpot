@@ -122,6 +122,10 @@ services:
       penpot: null
     restart: always
   penpot-frontend:
+    build:
+      context: ./frontend/selfhost
+      args:
+        PENPOT_VERSION: ${PENPOT_VERSION:-2.18.5}
     cpus: 1
     depends_on:
       penpot-admin-console:
@@ -143,7 +147,7 @@ services:
       PENPOT_HTTP_SERVER_MAX_BODY_SIZE: 367001600
       PENPOT_HTTP_SERVER_MAX_MULTIPART_BODY_SIZE: 367001600
       PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:-http://localhost:9001}
-    image: penpotapp/frontend:${PENPOT_VERSION:-2.18.5}
+    image: penpot-frontend-selfhost:local
     mem_limit: 256m
     networks:
       penpot: null

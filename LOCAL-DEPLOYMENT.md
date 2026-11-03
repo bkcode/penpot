@@ -4,7 +4,7 @@
 
 ## 运行
 
-唯一的本机部署入口是根目录 `compose.yaml`。应用镜像固定为 Penpot 2.18.5，worker 从 `mcp/resident-worker` 构建。Compose 项目名固定为 `penpot`。
+唯一的本机部署入口是根目录 `compose.yaml`。应用镜像固定为 Penpot 2.18.5，前端从 `frontend/selfhost` 构建（基于同版本官方镜像），worker 从 `mcp/resident-worker` 构建。Compose 项目名固定为 `penpot`。
 
 ```bash
 cd /Users/yangzhaohui/work/www/harness/penpot
@@ -63,3 +63,7 @@ docker compose exec penpot-worker node -e "fetch('http://127.0.0.1:4404/readyz')
 设计文件在 `penpot_penpot_postgres_v15` 数据卷，素材在 `penpot_penpot_assets` 数据卷。目录整理不改变这些卷及现有设计进度。停止服务使用 `docker compose stop`；删除容器后也应复用这些数据卷。`docker compose down -v` 会删除设计数据和素材。
 
 Penpot AI Kit 仍安装在用户目录 `~/.penpot-ai-kit`；它是共享技能安装，不是第二份 Penpot 项目。
+
+## 侧栏显示
+
+`frontend/selfhost/sidebar.css` 隐藏仪表盘侧栏的 Enterprise 推广及当前订阅卡片，前端镜像在构建时加载该样式。它只调整界面显示，不改变授权、订阅状态或管理控制台功能。更新后已打开的页面需要刷新。构建会检查两个卡片的 CSS 类是否存在；升级 Penpot 后如类名变化，应更新样式再构建。
