@@ -181,6 +181,41 @@ services:
     networks:
       penpot: null
     restart: always
+  penpot-import:
+    build:
+      context: ./mcp/file-import
+      args:
+        PENPOT_VERSION: ${PENPOT_VERSION:-2.18.5}
+    image: penpot-mcp-file-import:local
+    restart: unless-stopped
+    init: true
+    mem_limit: 1g
+    cpus: 1
+    read_only: true
+    tmpfs:
+    - /tmp:size=224m,mode=1777
+    environment:
+      PENPOT_IMPORT_BASE_URL: http://penpot-frontend:8080
+      PENPOT_IMPORT_TEAM_ID: ${PENPOT_WORKER_TEAM_ID:?Set target team ID}
+      PENPOT_IMPORT_CREDENTIALS_FILE: /run/secrets/worker-credentials
+      PENPOT_IMPORT_JOBS_DIR: /data/jobs
+    dns:
+    - ${PENPOT_DNS_ADDRESS:-172.30.250.53}
+    networks:
+      penpot: null
+      penpot-dns: null
+    depends_on:
+      penpot-frontend:
+        condition: service_started
+      penpot-dns:
+        condition: service_started
+    ports:
+    - 127.0.0.1:9002:4405
+    secrets:
+    - source: worker-credentials
+      target: /run/secrets/worker-credentials
+    volumes:
+    - penpot_import_jobs:/data/jobs
   penpot-postgres:
     cpus: 1
     environment:
@@ -255,5 +290,6 @@ services:
     shm_size: 256m
     stop_grace_period: 20s
 volumes:
+  penpot_import_jobs: null
   penpot_assets: null
   penpot_postgres_v15: null

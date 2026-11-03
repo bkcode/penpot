@@ -1,0 +1,26 @@
+{
+  "name": "@penpot/mcp-file-import",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "tsc",
+    "types:check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "fmt": "prettier --write src/",
+    "fmt:check": "prettier --check src/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ipaddr.js": "2.2.0",
+    "transit-js": "0.8.874"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/transit-js": "0.8.3",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3"
+  }
+}

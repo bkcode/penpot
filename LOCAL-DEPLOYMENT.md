@@ -69,3 +69,11 @@ Penpot AI Kit 仍安装在用户目录 `~/.penpot-ai-kit`；它是共享技能�
 `frontend/selfhost/sidebar.css` 隐藏仪表盘侧栏的 Enterprise 推广及当前订阅卡片，前端镜像在构建时加载该样式。它只调整界面显示，不改变授权、订阅状态或管理控制台功能。更新后已打开的页面需要刷新。构建会检查两个卡片的 CSS 类是否存在；升级 Penpot 后如类名变化，应更新样式再构建。
 
 前端 `PENPOT_FLAGS` 使用官方 `disable-dashboard-templates-section` 开关，隐藏仪表盘整个“库和模板”推荐区（含标题和所有推荐卡片）。此开关不影响设计文件内的组件库、素材库及已有内容。
+
+## MCP 文件导入
+
+独立服务 `penpot-import` 提供 `import_penpot_file` 与 `get_import_status`，仅在本机 `http://localhost:9002/mcp` 监听入口，使用后台账号的 MCP Key 认证。原设计 MCP 地址及多用户模式保留，不启用开发模式或 REPL。
+
+导入支持公开 HTTPS `.penpot` 链接，最大 200 MiB，默认导入目标团队的 Drafts；也可指定该团队内的项目。任务异步执行并持久化状态，同一 `requestId` 重试不会重复导入。导入成功不会切换后台编辑器或自动把文件连接为素材库。新任务卷为 `penpot_penpot_import_jobs`，容器内存上限为 1 GiB。
+
+配置、调用参数、重启后的任务行为及验收方法见 [导入 MCP README](mcp/file-import/README.md)。Codex 中新增连接名为 `penpot_import`，重新加载 MCP 或重启客户端后发现工具。
