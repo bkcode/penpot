@@ -25,3 +25,7 @@ node --test frontend/selfhost/entrypoint.test.mjs
 Build this directory using the deployment's existing pinned official frontend
 base. Keep its version and digest when this is the only change; upgrading the
 full frontend or backend is a separate task.
+
+The image copies public scripts, styles, and nginx configuration with mode 0644.
+This keeps them readable by the unprivileged runtime user even when Git was
+checked out under a restrictive umask. Credentials remain runtime secrets.
